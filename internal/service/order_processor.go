@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -18,6 +17,7 @@ type OrderProcessor struct {
 	accrualClient *accrual.Client
 	logger        *zap.Logger
 	processingMap sync.Map
+	ordersChan    chan string // Канал для новых заказов
 	done          chan struct{}
 }
 
@@ -26,26 +26,34 @@ func NewOrderProcessor(store storage.Storage, accrualClient *accrual.Client, log
 		store:         store,
 		accrualClient: accrualClient,
 		logger:        logger,
+		ordersChan:    make(chan string, 100), // Буфер для новых заказов
 		done:          make(chan struct{}),
 	}
 }
 
-// Start запускает обработку заказов
+// AddOrder добавляет заказ в очередь на обработку
+func (p *OrderProcessor) AddOrder(orderNumber string) {
+	select {
+	case p.ordersChan <- orderNumber:
+		p.logger.Debug("Order added to processing queue", zap.String("order", orderNumber))
+	default:
+		p.logger.Warn("Processing queue is full", zap.String("order", orderNumber))
+	}
+}
+
 func (p *OrderProcessor) Start(ctx context.Context) {
 	go p.processOrders(ctx)
 }
 
-// Stop останавливает обработку заказов
 func (p *OrderProcessor) Stop() {
 	close(p.done)
 }
 
-// internal/service/order_processor.go
 func (p *OrderProcessor) processOrders(ctx context.Context) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
-	retryInterval := time.Second
+	pending := make(map[string]time.Time) // Карта заказов в обработке
 
 	for {
 		select {
@@ -53,87 +61,79 @@ func (p *OrderProcessor) processOrders(ctx context.Context) {
 			return
 		case <-p.done:
 			return
+		case orderNumber := <-p.ordersChan:
+			// Добавляем новый заказ в список ожидающих
+			pending[orderNumber] = time.Now()
 		case <-ticker.C:
-			err := p.processNextBatch(ctx)
-			if err != nil {
-				// Если получили 404, значит система начисления недоступна
-				// Увеличиваем интервал проверки
-				if strings.Contains(err.Error(), "404") {
-					retryInterval = time.Second * 10 // увеличиваем интервал до 10 секунд
-					ticker.Reset(retryInterval)
+			if len(pending) == 0 {
+				continue
+			}
+
+			// Проверяем статус только тех заказов, которые в обработке
+			for orderNumber, lastCheck := range pending {
+				// Пропускаем заказы, которые проверялись менее 5 секунд назад
+				if time.Since(lastCheck) < 5*time.Second {
 					continue
 				}
 
-				// Для других ошибок также увеличиваем интервал
-				if rateLimitErr, ok := err.(*accrual.RateLimitError); ok {
-					retryInterval = rateLimitErr.RetryAfter
-					ticker.Reset(retryInterval)
-				} else {
-					// Для остальных ошибок тоже увеличиваем интервал
-					retryInterval = time.Second * 5
-					ticker.Reset(retryInterval)
+				if err := p.checkOrder(ctx, orderNumber); err != nil {
+					if _, ok := err.(*accrual.RateLimitError); ok {
+						// Обрабатываем rate limit
+						time.Sleep(time.Second)
+						continue
+					}
+					p.logger.Error("Failed to check order",
+						zap.String("order", orderNumber),
+						zap.Error(err))
+					continue
 				}
 
-				p.logger.Warn("Order processing temporary unavailable",
-					zap.Error(err),
-					zap.Duration("retry_after", retryInterval))
-			} else {
-				// При успешной обработке возвращаем нормальный интервал
-				if retryInterval != time.Second {
-					retryInterval = time.Second
-					ticker.Reset(retryInterval)
+				// Проверяем статус заказа
+				order, err := p.store.GetOrder(ctx, orderNumber)
+				if err != nil {
+					p.logger.Error("Failed to get order status",
+						zap.String("order", orderNumber),
+						zap.Error(err))
+					continue
+				}
+
+				// Если заказ обработан или отклонен, удаляем его из очереди
+				if order.Status == models.StatusProcessed ||
+					order.Status == models.StatusInvalid {
+					delete(pending, orderNumber)
+				} else {
+					// Обновляем время последней проверки
+					pending[orderNumber] = time.Now()
 				}
 			}
 		}
 	}
 }
 
-func (p *OrderProcessor) processNextBatch(ctx context.Context) error {
-	orders, err := p.store.GetOrdersForProcessing(ctx)
+func (p *OrderProcessor) checkOrder(ctx context.Context, orderNumber string) error {
+	accrual, err := p.accrualClient.GetOrderAccrual(orderNumber)
 	if err != nil {
-		return fmt.Errorf("failed to get orders: %w", err)
+		return err
 	}
 
-	// Если нет заказов для обработки, просто выходим
-	if len(orders) == 0 {
+	if accrual == nil {
 		return nil
 	}
 
-	for _, order := range orders {
-		// Пропускаем заказы с финальными статусами
-		if order.Status == models.StatusProcessed ||
-			order.Status == models.StatusInvalid {
-			continue
-		}
+	err = p.store.UpdateOrderStatus(ctx, orderNumber, accrual.Status, accrual.Accrual)
+	if err != nil {
+		return fmt.Errorf("failed to update order status: %w", err)
+	}
 
-		// Проверяем, не обрабатывается ли уже этот заказ
-		if _, exists := p.processingMap.LoadOrStore(order.Number, true); exists {
-			continue
-		}
-
-		// Делаем запрос к системе начисления
-		accrual, err := p.accrualClient.GetOrderAccrual(order.Number)
-		p.processingMap.Delete(order.Number)
-
+	if accrual.Status == models.StatusProcessed && accrual.Accrual > 0 {
+		// Получаем заказ для получения ID пользователя
+		order, err := p.store.GetOrder(ctx, orderNumber)
 		if err != nil {
-			// Если система начисления недоступна, просто пропускаем заказ
-			// Он будет обработан при следующей попытке
-			if strings.Contains(err.Error(), "404") {
-				continue
-			}
-			return err
+			return fmt.Errorf("failed to get order: %w", err)
 		}
 
-		if accrual == nil {
-			continue
-		}
-
-		// Обновляем статус заказа
-		err = p.store.UpdateOrderStatus(ctx, order.Number, accrual.Status, accrual.Accrual)
-		if err != nil {
-			p.logger.Error("Failed to update order status",
-				zap.String("order", order.Number),
-				zap.Error(err))
+		if err := p.store.UpdateBalance(ctx, order.UserID, accrual.Accrual); err != nil {
+			return fmt.Errorf("failed to update balance: %w", err)
 		}
 	}
 

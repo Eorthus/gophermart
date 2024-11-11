@@ -3,11 +3,30 @@ package accrual
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
 	"github.com/Eorthus/gophermart/internal/models"
 )
+
+// RateLimitError представляет ошибку превышения лимита запросов
+type RateLimitError struct {
+	RetryAfter time.Duration
+}
+
+func (e *RateLimitError) Error() string {
+	return fmt.Sprintf("rate limit exceeded, retry after %v", e.RetryAfter)
+}
+
+// OrderNotFoundError представляет ошибку отсутствия заказа
+type OrderNotFoundError struct {
+	OrderNumber string
+}
+
+func (e *OrderNotFoundError) Error() string {
+	return fmt.Sprintf("order %s not found", e.OrderNumber)
+}
 
 type Client struct {
 	baseURL    string
@@ -23,8 +42,12 @@ func NewClient(baseURL string) *Client {
 	}
 }
 
-// GetOrderAccrual получает информацию о начислении баллов за заказ
 func (c *Client) GetOrderAccrual(orderNumber string) (*models.AccrualResponse, error) {
+	if orderNumber == "" {
+		return nil, fmt.Errorf("order number cannot be empty")
+	}
+
+	// Правильно формируем URL
 	url := fmt.Sprintf("%s/api/orders/%s", c.baseURL, orderNumber)
 
 	resp, err := c.httpClient.Get(url)
@@ -33,10 +56,15 @@ func (c *Client) GetOrderAccrual(orderNumber string) (*models.AccrualResponse, e
 	}
 	defer resp.Body.Close()
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
 	switch resp.StatusCode {
 	case http.StatusOK:
 		var accrual models.AccrualResponse
-		if err := json.NewDecoder(resp.Body).Decode(&accrual); err != nil {
+		if err := json.Unmarshal(body, &accrual); err != nil {
 			return nil, fmt.Errorf("failed to decode response: %w", err)
 		}
 		return &accrual, nil
@@ -44,27 +72,11 @@ func (c *Client) GetOrderAccrual(orderNumber string) (*models.AccrualResponse, e
 	case http.StatusNoContent:
 		return nil, nil
 
-	case http.StatusTooManyRequests:
-		// Получаем время ожидания из заголовка
-		retryAfter := resp.Header.Get("Retry-After")
-		if retryAfter != "" {
-			seconds, err := time.ParseDuration(retryAfter + "s")
-			if err == nil {
-				return nil, &RateLimitError{RetryAfter: seconds}
-			}
-		}
-		return nil, &RateLimitError{RetryAfter: 60 * time.Second} // По умолчанию ждем 60 секунд
+	case http.StatusNotFound:
+		// Возможно, неправильный путь
+		return nil, fmt.Errorf("check accrual system URL configuration: %s returned 404", url)
 
 	default:
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
 	}
-}
-
-// RateLimitError представляет ошибку превышения лимита запросов
-type RateLimitError struct {
-	RetryAfter time.Duration
-}
-
-func (e *RateLimitError) Error() string {
-	return fmt.Sprintf("rate limit exceeded, retry after %v", e.RetryAfter)
 }

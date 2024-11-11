@@ -3,6 +3,7 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"os"
 )
 
@@ -15,7 +16,7 @@ type Config struct {
 	DatabaseURI string `env:"DATABASE_URI" envDefault:"postgres://postgres:0000@localhost:5432/gophermart?sslmode=disable"`
 
 	// Адрес системы расчёта начислений
-	AccrualSystemAddress string `env:"ACCRUAL_SYSTEM_ADDRESS" envDefault:"http://localhost:8080"`
+	AccrualSystemAddress string `env:"ACCRUAL_SYSTEM_ADDRESS" envDefault:"http://localhost:8081"`
 }
 
 // LoadConfig загружает конфигурацию из переменных окружения и флагов
@@ -53,7 +54,7 @@ func LoadConfig() (*Config, error) {
 	}
 
 	if cfg.AccrualSystemAddress == "" {
-		cfg.AccrualSystemAddress = "http://localhost:8080"
+		return nil, fmt.Errorf("accrual system address is not set")
 	}
 
 	return &cfg, nil

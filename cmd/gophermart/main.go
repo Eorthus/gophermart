@@ -40,14 +40,14 @@ func main() {
 	// Инициализация клиента системы начисления баллов
 	accrualClient := accrual.NewClient(cfg.AccrualSystemAddress)
 
-	// Инициализация сервисов
-	userService := service.NewUserService(store)
-	orderService := service.NewOrderService(store, accrualClient, *logger)
-	balanceService := service.NewBalanceService(store)
-
 	//Создание обработчика заказов
 	orderProcessor := service.NewOrderProcessor(store, accrualClient, logger)
 	go orderProcessor.Start(ctx)
+
+	// Инициализация сервисов
+	userService := service.NewUserService(store)
+	orderService := service.NewOrderService(store, accrualClient, *logger, orderProcessor)
+	balanceService := service.NewBalanceService(store)
 
 	// Инициализация маршрутизатора
 	router := api.NewRouter(

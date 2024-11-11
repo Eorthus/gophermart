@@ -9,10 +9,10 @@ import (
 type OrderStatus string
 
 const (
-	StatusNew        OrderStatus = "NEW"
-	StatusProcessing OrderStatus = "PROCESSING"
-	StatusInvalid    OrderStatus = "INVALID"
-	StatusProcessed  OrderStatus = "PROCESSED"
+	StatusRegistered OrderStatus = "REGISTERED" // заказ зарегистрирован, но вознаграждение не рассчитано
+	StatusProcessing OrderStatus = "PROCESSING" // расчёт начисления в процессе
+	StatusInvalid    OrderStatus = "INVALID"    // заказ не принят к расчёту
+	StatusProcessed  OrderStatus = "PROCESSED"  // расчёт начисления окончен
 )
 
 type Order struct {

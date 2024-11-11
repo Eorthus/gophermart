@@ -14,16 +14,18 @@ import (
 )
 
 type OrderService struct {
-	store         storage.Storage
-	logger        zap.Logger
-	accrualClient *accrual.Client
+	store          storage.Storage
+	logger         zap.Logger
+	accrualClient  *accrual.Client
+	orderProcessor *OrderProcessor
 }
 
-func NewOrderService(store storage.Storage, accrualClient *accrual.Client, logger zap.Logger) *OrderService {
+func NewOrderService(store storage.Storage, accrualClient *accrual.Client, logger zap.Logger, orderProcessor *OrderProcessor) *OrderService {
 	return &OrderService{
-		store:         store,
-		accrualClient: accrualClient,
-		logger:        logger,
+		store:          store,
+		accrualClient:  accrualClient,
+		logger:         logger,
+		orderProcessor: orderProcessor,
 	}
 }
 
@@ -45,6 +47,9 @@ func (s *OrderService) SubmitOrder(ctx context.Context, userID int64, orderNumbe
 		}
 		return fmt.Errorf("failed to save order: %w", err)
 	}
+
+	// Добавляем заказ в очередь на обработку
+	s.orderProcessor.AddOrder(orderNumber)
 
 	return nil
 }

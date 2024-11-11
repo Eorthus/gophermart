@@ -179,7 +179,7 @@ func (s *DatabaseStorage) SaveOrder(ctx context.Context, userID int64, number st
 	// Сохраняем новый заказ
 	_, err = s.db.ExecContext(ctx,
 		"INSERT INTO orders (number, user_id, status) VALUES ($1, $2, $3)",
-		number, userID, models.StatusNew,
+		number, userID, models.StatusRegistered,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to save order: %w", err)
