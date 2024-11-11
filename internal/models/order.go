@@ -9,7 +9,7 @@ import (
 type OrderStatus string
 
 const (
-	StatusRegistered OrderStatus = "REGISTERED" // заказ зарегистрирован, но вознаграждение не рассчитано
+	StatusRegistered OrderStatus = "NEW"        // заказ зарегистрирован, но вознаграждение не рассчитано
 	StatusProcessing OrderStatus = "PROCESSING" // расчёт начисления в процессе
 	StatusInvalid    OrderStatus = "INVALID"    // заказ не принят к расчёту
 	StatusProcessed  OrderStatus = "PROCESSED"  // расчёт начисления окончен
