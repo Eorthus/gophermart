@@ -31,7 +31,7 @@ func NewRouter(
 
 	// Protected routes
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.AuthMiddleware)
+		r.Use(middleware.AuthMiddleware(logger))
 
 		// Order handlers
 		orderHandler := handlers.NewOrderHandler(orderService, logger)
