@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/Eorthus/gophermart/internal/apperrors"
@@ -31,6 +32,7 @@ func NewDatabaseStorage(ctx context.Context, dsn string) (*DatabaseStorage, erro
     `, dbName))
 	if err != nil {
 		// Игнорируем ошибку, если база уже существует
+		log.Printf("Database created")
 	}
 
 	// Теперь подключаемся к созданной базе данных
