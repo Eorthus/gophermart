@@ -19,8 +19,9 @@ import (
 func addAuthCookie(req *http.Request, userID string) *http.Request {
 	w := httptest.NewRecorder()
 	middleware.SetAuthCookie(w, userID)
-	cookies := w.Result().Cookies()
-	for _, cookie := range cookies {
+	resp := w.Result()
+	defer resp.Body.Close()
+	for _, cookie := range resp.Cookies() {
 		req.AddCookie(cookie)
 	}
 	return req
@@ -95,8 +96,10 @@ func TestHandleSubmitOrder(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 			r.ServeHTTP(rr, req)
+			resp := rr.Result()
+			defer resp.Body.Close()
 
-			assert.Equal(t, tt.expectedStatus, rr.Code)
+			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 		})
 	}
 }
@@ -153,15 +156,16 @@ func TestHandleGetOrders(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 			r.ServeHTTP(rr, req)
+			resp := rr.Result()
+			defer resp.Body.Close()
 
-			assert.Equal(t, tt.expectedStatus, rr.Code)
+			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
 			if tt.expectedOrders != nil {
 				var response []models.Order
-				err := json.NewDecoder(rr.Body).Decode(&response)
+				err := json.NewDecoder(resp.Body).Decode(&response)
 				require.NoError(t, err)
 
-				// Сравниваем только номер и статус заказа, игнорируя время
 				for i := range response {
 					assert.Equal(t, tt.expectedOrders[i].Number, response[i].Number)
 					assert.Equal(t, tt.expectedOrders[i].Status, response[i].Status)

@@ -67,12 +67,14 @@ func TestHandleGetBalance(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 			r.ServeHTTP(rr, req)
+			resp := rr.Result()
+			defer resp.Body.Close()
 
-			assert.Equal(t, tt.expectedStatus, rr.Code)
+			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
 			if tt.expectedBody != nil {
 				var response models.Balance
-				err := json.NewDecoder(rr.Body).Decode(&response)
+				err := json.NewDecoder(resp.Body).Decode(&response)
 				require.NoError(t, err)
 				assert.Equal(t, tt.expectedBody, &response)
 			}
@@ -139,8 +141,10 @@ func TestHandleWithdraw(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 			r.ServeHTTP(rr, req)
+			resp := rr.Result()
+			defer resp.Body.Close()
 
-			assert.Equal(t, tt.expectedStatus, rr.Code)
+			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 		})
 	}
 }
@@ -199,15 +203,16 @@ func TestHandleGetWithdrawals(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 			r.ServeHTTP(rr, req)
+			resp := rr.Result()
+			defer resp.Body.Close()
 
-			assert.Equal(t, tt.expectedStatus, rr.Code)
+			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
 			if tt.expectedWithdraws != nil {
 				var response []models.Withdrawal
-				err := json.NewDecoder(rr.Body).Decode(&response)
+				err := json.NewDecoder(resp.Body).Decode(&response)
 				require.NoError(t, err)
 
-				// Проверяем только OrderNumber и Sum, так как время может различаться
 				assert.Equal(t, len(tt.expectedWithdraws), len(response))
 				for i := range response {
 					assert.Equal(t, tt.expectedWithdraws[i].OrderNumber, response[i].OrderNumber)
