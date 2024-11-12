@@ -56,6 +56,7 @@ func main() {
 		orderService,
 		balanceService,
 		logger,
+		store,
 	)
 
 	// Запуск сервера

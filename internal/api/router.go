@@ -2,6 +2,8 @@
 package api
 
 import (
+	"time"
+
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 
@@ -9,6 +11,7 @@ import (
 	"github.com/Eorthus/gophermart/internal/config"
 	"github.com/Eorthus/gophermart/internal/middleware"
 	"github.com/Eorthus/gophermart/internal/service"
+	"github.com/Eorthus/gophermart/internal/storage"
 )
 
 func NewRouter(
@@ -17,12 +20,15 @@ func NewRouter(
 	orderService *service.OrderService,
 	balanceService *service.BalanceService,
 	logger *zap.Logger,
+	store *storage.DatabaseStorage,
 ) chi.Router {
 	r := chi.NewRouter()
 
 	// Middleware
 	r.Use(middleware.Logger(logger)) // Используем существующий Logger
 	r.Use(middleware.GzipMiddleware)
+	r.Use(middleware.APIContextMiddleware(10 * time.Second))
+	r.Use(middleware.DBContextMiddleware(store))
 
 	// Auth handlers
 	authHandler := handlers.NewAuthHandler(userService, logger)
