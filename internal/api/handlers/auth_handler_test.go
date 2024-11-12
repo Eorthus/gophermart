@@ -75,6 +75,7 @@ func TestHandleRegister(t *testing.T) {
 
 			if tt.expectedStatus == http.StatusOK {
 				cookies := rr.Result().Cookies()
+				defer rr.Result().Body.Close() // Закрываем тело ответа
 				if assert.NotEmpty(t, cookies, "Expected cookie to be set") {
 					assert.Equal(t, "auth_token", cookies[0].Name)
 				}
@@ -146,6 +147,7 @@ func TestHandleLogin(t *testing.T) {
 
 			if tt.expectedStatus == http.StatusOK {
 				cookies := rr.Result().Cookies()
+				defer rr.Result().Body.Close() // Закрываем тело ответа
 				if assert.NotEmpty(t, cookies, "Expected cookie to be set") {
 					assert.Equal(t, "auth_token", cookies[0].Name)
 				}
