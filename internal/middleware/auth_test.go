@@ -148,8 +148,11 @@ func TestSetAuthCookie(t *testing.T) {
 			SetAuthCookie(rr, tt.userID)
 
 			// Получаем установленные cookies
-			cookies := rr.Result().Cookies()
-			defer rr.Result().Body.Close() // Закрываем тело ответа
+			res := rr.Result()     // Получаем результат один раз
+			defer res.Body.Close() // Закрываем тело ответа после получения
+
+			cookies := res.Cookies() // Используем переменную `res`
+
 			// Должен быть установлен ровно один cookie
 			assert.Len(t, cookies, 1)
 

@@ -71,11 +71,13 @@ func TestHandleRegister(t *testing.T) {
 
 			r.ServeHTTP(rr, req)
 
+			res := rr.Result()
+			defer res.Body.Close() // Закрываем тело ответа
+
 			assert.Equal(t, tt.expectedStatus, rr.Code)
 
 			if tt.expectedStatus == http.StatusOK {
-				cookies := rr.Result().Cookies()
-				defer rr.Result().Body.Close() // Закрываем тело ответа
+				cookies := res.Cookies()
 				if assert.NotEmpty(t, cookies, "Expected cookie to be set") {
 					assert.Equal(t, "auth_token", cookies[0].Name)
 				}
@@ -143,11 +145,13 @@ func TestHandleLogin(t *testing.T) {
 
 			r.ServeHTTP(rr, req)
 
+			res := rr.Result()
+			defer res.Body.Close() // Закрываем тело ответа
+
 			assert.Equal(t, tt.expectedStatus, rr.Code, "Status code mismatch for %s", tt.name)
 
 			if tt.expectedStatus == http.StatusOK {
-				cookies := rr.Result().Cookies()
-				defer rr.Result().Body.Close() // Закрываем тело ответа
+				cookies := res.Cookies()
 				if assert.NotEmpty(t, cookies, "Expected cookie to be set") {
 					assert.Equal(t, "auth_token", cookies[0].Name)
 				}
