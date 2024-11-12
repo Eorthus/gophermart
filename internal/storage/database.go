@@ -106,7 +106,6 @@ func (s *DatabaseStorage) initSchema(ctx context.Context) error {
 	return err
 }
 
-// User operations implementation
 func (s *DatabaseStorage) CreateUser(ctx context.Context, login, passwordHash string) (*models.User, error) {
 	query := `
         INSERT INTO users (login, password_hash) 
@@ -124,7 +123,6 @@ func (s *DatabaseStorage) CreateUser(ctx context.Context, login, passwordHash st
 		return nil, err
 	}
 
-	// Create initial balance record
 	_, err = s.db.ExecContext(ctx,
 		"INSERT INTO balances (user_id, current, withdrawn) VALUES ($1, 0, 0)",
 		user.ID,
@@ -155,7 +153,6 @@ func (s *DatabaseStorage) GetUserByLogin(ctx context.Context, login string) (*mo
 	return user, nil
 }
 
-// Order operations implementation
 func (s *DatabaseStorage) SaveOrder(ctx context.Context, userID int64, number string) error {
 	// Сначала проверяем, существует ли заказ
 	var existingUserID sql.NullInt64
@@ -202,7 +199,7 @@ func (s *DatabaseStorage) GetOrder(ctx context.Context, number string) (*models.
 		&order.Number,
 		&order.UserID,
 		&order.Status,
-		&order.Accrual, // теперь это sql.NullFloat64
+		&order.Accrual,
 		&order.UploadedAt,
 	)
 
@@ -274,7 +271,6 @@ func (s *DatabaseStorage) UpdateOrderStatus(ctx context.Context, number string, 
 	return nil
 }
 
-// Balance operations implementation
 func (s *DatabaseStorage) GetBalance(ctx context.Context, userID int64) (*models.Balance, error) {
 	query := `
         SELECT current, withdrawn 
@@ -324,7 +320,6 @@ func (s *DatabaseStorage) UpdateBalance(ctx context.Context, userID int64, delta
 	return tx.Commit()
 }
 
-// Withdrawal operations implementation
 func (s *DatabaseStorage) CreateWithdrawal(ctx context.Context, userID int64, orderNumber string, sum float64) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -413,7 +408,7 @@ func (s *DatabaseStorage) GetOrdersForProcessing(ctx context.Context) ([]models.
 			&order.Number,
 			&order.UserID,
 			&order.Status,
-			&order.Accrual, // теперь это sql.NullFloat64
+			&order.Accrual,
 			&order.UploadedAt,
 		)
 		if err != nil {
@@ -425,7 +420,6 @@ func (s *DatabaseStorage) GetOrdersForProcessing(ctx context.Context) ([]models.
 	return orders, rows.Err()
 }
 
-// Service operations implementation
 func (s *DatabaseStorage) Ping(ctx context.Context) error {
 	return s.db.PingContext(ctx)
 }
@@ -434,7 +428,6 @@ func (s *DatabaseStorage) Close() error {
 	return s.db.Close()
 }
 
-// Utility functions
 func isPgUniqueViolation(err error) bool {
 	// Implement PostgreSQL unique constraint violation check
 	return false // TODO: implement

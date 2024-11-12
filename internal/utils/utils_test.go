@@ -29,7 +29,7 @@ func TestSplitString(t *testing.T) {
 			name:     "empty string",
 			input:    "",
 			sep:      ":",
-			expected: nil, // Изменено с []string{""} на nil
+			expected: nil,
 		},
 		{
 			name:     "multiple character separator",

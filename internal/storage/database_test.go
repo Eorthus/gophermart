@@ -29,14 +29,11 @@ func TestDatabaseStorage(t *testing.T) {
 		passwordHash := "hashed_password"
 		userID := int64(1)
 
-		// Ожидаем вызов INSERT INTO users с QueryRowContext, который возвращает поля нового пользователя
 		mock.ExpectQuery("INSERT INTO users").
 			WithArgs(login, passwordHash).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "login", "password_hash", "created_at"}).
 				AddRow(userID, login, passwordHash, time.Now()))
 
-		// Ожидаем выполнение Exec для создания записи в таблице балансов
-		// Передаем только userID, поскольку current и withdrawn заданы литералами в SQL-запросе
 		mock.ExpectExec("INSERT INTO balances").
 			WithArgs(userID).
 			WillReturnResult(sqlmock.NewResult(1, 1))

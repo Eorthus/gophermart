@@ -54,7 +54,6 @@ func (h *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// internal/api/handlers/auth_handler.go
 func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	var creds models.Credentials
 	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {

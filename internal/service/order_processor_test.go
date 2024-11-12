@@ -16,7 +16,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// Тестируем только добавление заказа в очередь
 func TestOrderProcessor_AddOrder(t *testing.T) {
 	logger := zap.NewExample()
 	ctrl := gomock.NewController(t)
@@ -42,7 +41,6 @@ func TestOrderProcessor_AddOrder(t *testing.T) {
 	}
 }
 
-// Тестируем только корректную остановку процессора
 func TestOrderProcessor_Stop(t *testing.T) {
 	logger := zap.NewExample()
 	ctrl := gomock.NewController(t)
