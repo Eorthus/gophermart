@@ -15,6 +15,8 @@ var (
 )
 
 // Storage определяет интерфейс для хранения данных
+//
+//go:generate mockgen -source=storage.go -destination=mock/mock_storage.go -package=mock
 type Storage interface {
 	// User operations
 	CreateUser(ctx context.Context, login, passwordHash string) (*models.User, error)

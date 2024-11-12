@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
 
 	"github.com/Eorthus/gophermart/internal/accrual"
 	"github.com/Eorthus/gophermart/internal/apperrors"
 	"github.com/Eorthus/gophermart/internal/models"
 	"github.com/Eorthus/gophermart/internal/storage"
+	"github.com/Eorthus/gophermart/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -31,7 +31,7 @@ func NewOrderService(store storage.Storage, accrualClient *accrual.Client, logge
 
 func (s *OrderService) SubmitOrder(ctx context.Context, userID int64, orderNumber string) error {
 	// Валидируем номер заказа по алгоритму Луна
-	if !validateLuhn(orderNumber) {
+	if !utils.ValidateLuhn(orderNumber) {
 		s.logger.Info("Invalid order number format by Luhn algorithm",
 			zap.String("order_number", orderNumber))
 		return apperrors.ErrInvalidOrder
@@ -56,29 +56,4 @@ func (s *OrderService) SubmitOrder(ctx context.Context, userID int64, orderNumbe
 
 func (s *OrderService) GetUserOrders(ctx context.Context, userID int64) ([]models.Order, error) {
 	return s.store.GetUserOrders(ctx, userID)
-}
-
-func validateLuhn(number string) bool {
-	// Проверяем, что строка содержит только цифры
-	if !regexp.MustCompile(`^\d+$`).MatchString(number) {
-		return false
-	}
-
-	sum := 0
-	nDigits := len(number)
-	parity := nDigits % 2
-
-	for i := 0; i < nDigits; i++ {
-		digit := int(number[i] - '0')
-
-		if i%2 == parity {
-			digit *= 2
-			if digit > 9 {
-				digit -= 9
-			}
-		}
-		sum += digit
-	}
-
-	return sum%10 == 0
 }

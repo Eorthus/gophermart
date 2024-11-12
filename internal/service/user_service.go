@@ -2,11 +2,10 @@ package service
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"strings"
 
 	"github.com/Eorthus/gophermart/internal/apperrors"
+	"github.com/Eorthus/gophermart/internal/middleware"
 	"github.com/Eorthus/gophermart/internal/models"
 	"github.com/Eorthus/gophermart/internal/storage"
 )
@@ -20,7 +19,7 @@ func NewUserService(store storage.Storage) *UserService {
 }
 
 func (s *UserService) RegisterUser(ctx context.Context, login, password string) (*models.User, error) {
-	passwordHash := hashPassword(password)
+	passwordHash := middleware.HashPassword(password)
 	user, err := s.store.CreateUser(ctx, login, passwordHash)
 	if err != nil {
 		// Проверяем ошибку на нарушение уникальности
@@ -38,15 +37,9 @@ func (s *UserService) AuthenticateUser(ctx context.Context, login, password stri
 		return nil, apperrors.ErrInvalidCredentials
 	}
 
-	if user.PasswordHash != hashPassword(password) {
+	if user.PasswordHash != middleware.HashPassword(password) {
 		return nil, apperrors.ErrInvalidCredentials
 	}
 
 	return user, nil
-}
-
-func hashPassword(password string) string {
-	hash := sha256.New()
-	hash.Write([]byte(password))
-	return hex.EncodeToString(hash.Sum(nil))
 }

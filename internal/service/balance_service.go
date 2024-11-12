@@ -7,6 +7,7 @@ import (
 	"github.com/Eorthus/gophermart/internal/apperrors"
 	"github.com/Eorthus/gophermart/internal/models"
 	"github.com/Eorthus/gophermart/internal/storage"
+	"github.com/Eorthus/gophermart/internal/utils"
 )
 
 type BalanceService struct {
@@ -23,7 +24,7 @@ func (s *BalanceService) GetBalance(ctx context.Context, userID int64) (*models.
 
 func (s *BalanceService) Withdraw(ctx context.Context, userID int64, orderNumber string, amount float64) error {
 	// Проверяем валидность номера заказа
-	if !validateLuhn(orderNumber) {
+	if !utils.ValidateLuhn(orderNumber) {
 		return apperrors.ErrInvalidOrder
 	}
 

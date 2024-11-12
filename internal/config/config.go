@@ -26,7 +26,7 @@ func LoadConfig() (*Config, error) {
 	// Определяем флаги командной строки
 	flag.StringVar(&cfg.RunAddress, "a", "", "Address and port to run server")
 	flag.StringVar(&cfg.DatabaseURI, "d", "", "Database URI")
-	flag.StringVar(&cfg.AccrualSystemAddress, "r", "", "Accrual system address")
+	flag.StringVar(&cfg.AccrualSystemAddress, "r", "http://localhost:8081", "Accrual system address")
 
 	// Парсим флаги
 	flag.Parse()

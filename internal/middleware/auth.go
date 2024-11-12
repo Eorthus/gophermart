@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/Eorthus/gophermart/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -47,7 +48,7 @@ func GetUserID(r *http.Request) string {
 		return ""
 	}
 
-	parts := split(cookie.Value, ":")
+	parts := utils.SplitString(cookie.Value, ":")
 	if len(parts) != 2 {
 		log.Printf("Invalid cookie format: %s", cookie.Value)
 		return ""
@@ -82,22 +83,12 @@ func generateSignature(data string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func isValidSignature(data, signature string) bool {
-	return generateSignature(data) == signature
+func HashPassword(password string) string {
+	hash := sha256.New()
+	hash.Write([]byte(password))
+	return hex.EncodeToString(hash.Sum(nil))
 }
 
-func split(s string, sep string) []string {
-	var result []string
-	start := 0
-	for i := 0; i < len(s); i++ {
-		if i == len(s)-1 || s[i:i+len(sep)] == sep {
-			if i == len(s)-1 {
-				i++
-			}
-			result = append(result, s[start:i])
-			start = i + len(sep)
-			i += len(sep) - 1
-		}
-	}
-	return result
+func isValidSignature(data, signature string) bool {
+	return generateSignature(data) == signature
 }
